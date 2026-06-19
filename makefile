@@ -8,6 +8,7 @@ INCLUDES = -I$(CPLEX)/cplex/include \
            -I$(CPLEX)/concert/include
 
 LIBS = -L$(CPLEX)/cplex/lib/x86-64_linux/static_pic \
+       -L$(CPLEX)/concert/lib/x86-64_linux/static_pic \
        -lilocplex -lconcert -lcplex -lm -lpthread
 	   
 # Final executable name
@@ -22,11 +23,11 @@ all: $(TARGET)
 
 # How to build the executable
 $(TARGET): $(OBJS)
-	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS)
+	$(CXX) $(CXXFLAGS) -o $(TARGET) $(OBJS) $(LIBS)
 
 # How to build the objects (.o)
 %.o: %.cpp
-	$(CXX) $(CXXFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) $(INCLUDES) -c $< -o $@
 
 # Cleaning up compiled files
 clean:
