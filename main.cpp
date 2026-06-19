@@ -1,6 +1,7 @@
 #include <iostream>
 #include <vector>
 #include <fstream> 
+#include <ilcplex/ilocplex.h>
 
 struct Item {
     int id;
@@ -57,16 +58,68 @@ KPCInstance read_instance(const std::string& file_name){
     return inst; 
 };
 
+void solveKPC(const KPCInstance inst){
+    IloEnv env;
+    try{
+
+        IloModel model(env);
+        IloNumVarArray x(env, inst.num_items, 0,1, ILOINT);
+
+        IloExpr objExpr(env);
+        for (int i =0; i < inst.num_items; ++i){
+            objExpr += inst.items[i].profit*x[i];
+        }
+        model.add(IloMaximize(env, objExpr));
+        objExpr.end();
+
+        IloExpr weightExpr(env);
+        for(int i=0; i < inst.num_items; ++i){
+            weightExpr += inst.items[i].weight *x[i];
+        }
+        model.add(weightExpr <= inst.capacity);
+        weightExpr.end();
+
+        for(int i=0; i < inst.num_items; ++i){
+            for(int j = i + 1; j < inst.num_items; ++j){
+                if(inst.conflict_matrix[i][j]){
+                    model.add(x[i] + x[j] <= 1);
+                }
+            }
+        }
+
+        IloCplex cplex(model);
+
+        if(cplex.solve()){
+            std::cout << "----------------------------------------------------" << std::endl;
+            std::cout << "Status: " << cplex.getStatus() << std::endl;
+            std::cout << "Maximum Profit: "<< cplex.getObjValue() << std::endl;
+
+            std::cout << "Selected Items: ";
+            for(int i=0; i < inst.num_items; ++i){
+                if(cplex.getValue(x[i]) > 0.5){
+                    std::cout << i << " ";
+                }
+            }
+            std::cout << std::endl;
+        }else{
+            std::cout << " No Solution Found." << std::endl;
+        }
+    }catch(IloException e){
+        std::cerr << "CPLEX error: " << e << std::endl;
+    }
+
+    env.end();
+
+
+};
+
 int main(){
 
     std::cout << "Data Structures loaded successfully." << std::endl;
 
     KPCInstance instance = read_instance("instance.txt");
 
-    std::cout << "File read successfully." << std::endl;
-    std::cout << "We have: " << instance.num_items << " items and capacity " << instance.capacity << std::endl;
-    std::cout << "Item 0 has " << instance.items[0].degree << " conflict(s)." << std::endl;
-
+    solveKPC(instance);
 
     return 0;
 }
