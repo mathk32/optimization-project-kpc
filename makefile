@@ -2,6 +2,14 @@
 CXX = g++
 CXXFLAGS = -Wall -Wextra -std=c++17 -O3
 
+CPLEX = /opt/ibm/ILOG/CPLEX_Studio2211
+
+INCLUDES = -I$(CPLEX)/cplex/include \
+           -I$(CPLEX)/concert/include
+
+LIBS = -L$(CPLEX)/cplex/lib/x86-64_linux/static_pic \
+       -lilocplex -lconcert -lcplex -lm -lpthread
+	   
 # Final executable name
 TARGET = kpc_solver
 
