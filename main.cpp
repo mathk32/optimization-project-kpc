@@ -61,7 +61,7 @@ int main(){
 
     std::cout << "Data Structures loaded successfully." << std::endl;
 
-    KPCInstance instance = read_instance("intance.txt");
+    KPCInstance instance = read_instance("instance.txt");
 
     std::cout << "File read successfully." << std::endl;
     std::cout << "We have: " << instance.num_items << " items and capacity " << instance.capacity << std::endl;
