@@ -58,6 +58,49 @@ KPCInstance read_instance(const std::string& file_name){
     return inst; 
 };
 
+
+ILOBRANCHCALLBACK2(MyBranchRule, IloNumVarArray, x, const KPCInstance&, inst) {
+ 
+    IloEnv env = getEnv();
+    IloNumArray val(env);
+    getValues(val, x);
+
+    int best_var = -1;
+    double max_score = -1.0;
+    double min_dist_to_half = 1.0;
+
+
+    for (int i = 0; i < inst.num_items; ++i) {
+        
+        if (val[i] > 1e-5 && val[i] < 1.0 - 1e-5) {
+            
+            double efficiency = inst.items[i].profit / inst.items[i].weight;
+            double score = inst.items[i].degree * efficiency;
+
+      
+            double dist = std::abs(0.5 - val[i]);
+
+            if (score > max_score || (score == max_score && dist < min_dist_to_half)) {
+                best_var = i;
+                max_score = score;
+                min_dist_to_half = dist;
+            }
+        }
+    }
+
+  
+    if (best_var != -1) {
+        double obj_val = getObjValue();
+
+        makeBranch(x[best_var], 1.0, IloCplex::BranchUp, obj_val);
+        makeBranch(x[best_var], 0.0, IloCplex::BranchDown, obj_val);
+    }
+    
+    val.end(); 
+}
+
+
+
 void solveKPC(const KPCInstance inst){
     IloEnv env;
     try{
@@ -88,6 +131,9 @@ void solveKPC(const KPCInstance inst){
         }
 
         IloCplex cplex(model);
+        
+        cplex.use(MyBranchRule(env, x, inst));
+        cplex.setParam(IloCplex::Param::MIP::Strategy::FPHeur, -1);
 
         if(cplex.solve()){
             std::cout << "----------------------------------------------------" << std::endl;
