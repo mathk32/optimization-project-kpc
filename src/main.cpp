@@ -163,7 +163,7 @@ int main(){
 
     std::cout << "Data Structures loaded successfully." << std::endl;
 
-    KPCInstance instance = read_instance("../instance.txt");
+    KPCInstance instance = read_instance("../instances.txt");
 
     solveKPC(instance);
 
