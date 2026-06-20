@@ -1,7 +1,12 @@
 #include <iostream>
 #include <vector>
 #include <fstream> 
+#include <filesystem>
 #include <ilcplex/ilocplex.h>
+#include <chrono>
+#include <iomanip>
+
+namespace fs = std::filesystem;
 
 struct Item {
     int id;
@@ -16,6 +21,12 @@ struct KPCInstance{
     std::vector<Item> items;
 
     std::vector<std::vector<bool>> conflict_matrix;
+};
+
+struct ExperimentKPC{
+    double max_profit; 
+    int explored_nodes;
+    double cpu_time; 
 };
 
 KPCInstance read_instance(const std::string& file_name){
@@ -99,10 +110,10 @@ ILOBRANCHCALLBACK2(MyBranchRule, IloNumVarArray, x, const KPCInstance&, inst) {
     val.end(); 
 }
 
-
-
-void solveKPC(const KPCInstance inst){
+ExperimentKPC solveKPC(const KPCInstance inst, bool use_heuristics){
     IloEnv env;
+    ExperimentKPC res = {0.0,0,0.0};
+
     try{
 
         IloModel model(env);
@@ -131,41 +142,69 @@ void solveKPC(const KPCInstance inst){
         }
 
         IloCplex cplex(model);
+        cplex.setOut(env.getNullStream());
         
-        cplex.use(MyBranchRule(env, x, inst));
-        cplex.setParam(IloCplex::Param::MIP::Strategy::FPHeur, -1);
-
-        if(cplex.solve()){
-            std::cout << "----------------------------------------------------" << std::endl;
-            std::cout << "Status: " << cplex.getStatus() << std::endl;
-            std::cout << "Maximum Profit: "<< cplex.getObjValue() << std::endl;
-
-            std::cout << "Selected Items: ";
-            for(int i=0; i < inst.num_items; ++i){
-                if(cplex.getValue(x[i]) > 0.5){
-                    std::cout << i << " ";
-                }
-            }
-            std::cout << std::endl;
-        }else{
-            std::cout << " No Solution Found." << std::endl;
+        if(use_heuristics){
+            cplex.use(MyBranchRule(env, x, inst));
+            cplex.setParam(IloCplex::Param::MIP::Strategy::FPHeur, -1);
         }
+
+        auto start_time = std::chrono::high_resolution_clock::now();
+        
+        cplex.solve();
+
+        auto end_time = std::chrono::high_resolution_clock::now();
+        std::chrono::duration<double> diff = end_time - start_time;
+
+        if (cplex.getStatus() == IloAlgorithm::Optimal){
+            res.max_profit = cplex.getObjValue();
+            res.explored_nodes = cplex.getNnodes();
+            res.cpu_time = diff.count();
+        }
+
     }catch(IloException e){
         std::cerr << "CPLEX error: " << e << std::endl;
     }
 
     env.end();
+    return res;
 
 
 };
 
 int main(){
 
-    std::cout << "Data Structures loaded successfully." << std::endl;
+    std::string instance_folder = "../instances";
+    std::ofstream csv_file("results.csv");
 
-    KPCInstance instance = read_instance("../instances.txt");
+    csv_file << "Instance, Items, Default_Profit, Default_Nodes, Default_Time(s), Profit_Score, Score_Nodes, Score_Time(s)\n";
 
-    solveKPC(instance);
+    for(const auto& entry: fs::directory_iterator(instance_folder)){
+        std::string path = entry.path().string();
+        std::string file_name = entry.path().filename().string();
+            
+        std::cout << "Processing: " << file_name << "..." << std::flush;
+
+        KPCInstance inst = read_instance(path);
+
+        ExperimentKPC res_default = solveKPC(inst, false);
+            
+        ExperimentKPC res_score = solveKPC(inst, true);
+
+        csv_file << file_name << ","
+                    << inst.num_items << ","
+                    << res_default.max_profit<< ","
+                    << res_default.explored_nodes << ","
+                    << std::fixed << std::setprecision(4) << res_default.cpu_time << ","
+                    << res_score.max_profit << ","
+                    << res_score.explored_nodes << ","
+                    << std::fixed << std::setprecision(4) << res_score.cpu_time << "\n";
+                        
+        std::cout << " OK!" << std::endl;
+    }
+
+    csv_file.close();
+    std::cout << "\nTest completed! 'results.csv' file generated successfully." << std::endl;
 
     return 0;
 }
