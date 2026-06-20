@@ -5,3 +5,4 @@
 !*.pdf
 !Makefile
 !.gitignore
+!*.py
