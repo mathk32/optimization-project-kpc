@@ -28,12 +28,18 @@ if __name__ == "__main__":
     os.makedirs("instances", exist_ok=True)
         
     settings = [
-        (200, 0.2, 5),  
+        (100, 0.2, 5),
+        (100, 0.4, 5),
+        (100, 0.6, 5),
+        (100, 0.8, 5),
+        (150, 0.2, 5),  
+        (150, 0.6, 5),
+        (150, 0.4, 5),
+        (150, 0.8, 5), 
+        (200, 0.2, 5),
+        (200, 0.4, 5),
         (200, 0.6, 5),
-        (200, 0.8, 5), 
-        (250, 0.2, 5),
-        (250, 0.6, 5),
-        (250, 0.8, 5)
+        (200, 0.8, 5)
     ]
     count = 1
     for num_items, density, amt in settings:
@@ -42,5 +48,5 @@ if __name__ == "__main__":
             generate_instances(name, num_items, density)
             count += 1
                 
-    print("30 instances successfully generated.!")    
+    print(f"{count - 1} instances successfully generated.!")    
             
